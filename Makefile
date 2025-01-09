@@ -8,7 +8,7 @@ all: format
 	@-mv $(BUILD_DIR)/compile_commands.json .
 
 test: build/bin/SICLLR
-	./build/bin/SICLLR test/src
+	./build/bin/SICLLR test/objf1 test/objf2 test/objf3
 
 format:
 	find . -name build -type d \! -prune -o -iname '*.h' -o -iname '*.cpp' | xargs clang-format -i
