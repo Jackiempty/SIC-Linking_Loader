@@ -28,27 +28,21 @@ typedef struct {
   string raw;
 } OBJLINE;
 
-class memory {
- public:
-  memory();
-  uint8_t get_mem(uint32_t address);
-
- private:
-  uint8_t mem[0xFFFFFF];
-};
-
 class LLR {
  public:
   LLR();
-  memory Loader(vector<vector<OBJLINE>> progs);
+  uint8_t* Loader(vector<vector<OBJLINE>> progs);
   vector<vector<OBJLINE>> loadOBJ(vector<string> file);
   OBJLINE parseLine(string line);
   void insert(const string label, int address);
   void DisplayTable();
-  bool findLabel(const string symbol, int &address);
+  bool findLabel(const string symbol, int& address);
+  uint8_t get_mem(uint32_t address);
+  void mem_Display();
 
  private:
   unordered_map<string, int> table;
+  uint8_t mem[0xFFFFFF];
 };
 
 #endif

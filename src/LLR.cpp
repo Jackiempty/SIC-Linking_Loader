@@ -17,7 +17,7 @@ vector<vector<OBJLINE>> LLR::loadOBJ(vector<string> file) {
     ifstream fin(file[i]);
     if (!fin) throw runtime_error("[!] Cannot open input file:" + file[i]);
     while (getline(fin, line)) {
-      cout << line << endl;
+      // cout << line << endl;
       prog.push_back(parseLine(line));
     }
     PROGS.push_back(prog);
@@ -31,7 +31,7 @@ OBJLINE LLR::parseLine(string line) {
   objline.raw = line;
   if (line[0] == 'H') {
     objline.type = Header;
-    cout << stoi(line.substr(7, 6)) << endl;
+    // cout << stoi(line.substr(7, 6)) << endl;
     objline.length = stoi(line.substr(13, 6), 0, 16);
     objline.address = stoi(line.substr(7, 6), 0, 16);
     insert(line.substr(1, 6), stoi(line.substr(7, 6), 0, 16));
@@ -51,7 +51,7 @@ OBJLINE LLR::parseLine(string line) {
     int i = 1;
     objline.type = Define;
     while (line[i]) {
-      cout << line.substr(i + 6, 6) << endl;
+      // cout << line.substr(i + 6, 6) << endl;
       insert(line.substr(i, 6), stoi(line.substr(i + 6, 6), 0, 16));
       i += 12;
     }
@@ -65,15 +65,41 @@ OBJLINE LLR::parseLine(string line) {
   return objline;
 }
 
-memory LLR::Loader(vector<vector<OBJLINE>> progs) {
-  memory mem;
+uint8_t* LLR::Loader(vector<vector<OBJLINE>> progs) {
   int start = PROGADDR;
   for (int i = 0; i < progs.size(); i++) {
     for (int j = 0; j < progs[i].size(); j++) {
       if (progs[i][j].type == Header) {
         progs[i][j].address += start;
+        table[progs[i][j].raw.substr(1, 6)] = start;
         start += progs[i][j].length;
-        cout << progs[i][j].raw << " : " << int_to_hex(progs[i][j].address, 6) << endl;
+        // cout << progs[i][j].raw << " : " << int_to_hex(progs[i][j].address, 6) << ", "
+        //      << int_to_hex(table[progs[i][j].raw.substr(1, 6)], 6) << endl;
+      }
+    }
+  }
+  for (int i = 0; i < progs.size(); i++) {
+    for (int j = 0; j < progs[i].size(); j++) {
+      switch (progs[i][j].type) {
+        case (Header): {
+          start = progs[i][j].address;
+        } break;
+        case (Text): {
+          int line_start = start + progs[i][j].address;
+          for (int k = 0; k < progs[i][j].length; k++) {
+            mem[line_start] = stoi(progs[i][j].objcode.substr(k * 2, 2), 0, 16);
+            line_start += 1;
+          }
+
+        } break;
+        case (Modification): {
+        } break;
+        case (Define):
+        case (Refer):
+        case (End):
+          break;
+        default:
+          cout << "No Record type found" << endl;
       }
     }
   }
@@ -98,6 +124,13 @@ bool LLR::findLabel(const string symbol, int& address) {
   return false;
 }
 
-memory::memory() { cout << "24 byte memory allocated" << endl; }
+uint8_t LLR::get_mem(uint32_t address) { return mem[address]; }
 
-uint8_t memory::get_mem(uint32_t address) { return mem[address]; }
+void LLR::mem_Display() {
+  for (int i = 0x1000; i < 0x2100; i++) {
+    if ((i - 0x1000) % 8 == 0) cout << int_to_hex(i, 6) << ": ";
+    cout << int_to_hex(mem[i], 2);
+    cout << " ";
+    if ((i - 0x0FFF) % 8 == 0) cout << endl;
+  }
+}

@@ -24,10 +24,10 @@ int main(int argc, char* argv[]) {
     }
   }
   vector<vector<OBJLINE>> PROGS;
-  memory mem;
+  uint8_t* mem;
   LLR Llr;
   PROGS = Llr.loadOBJ(input);
   mem = Llr.Loader(PROGS);
-
+  Llr.mem_Display();
   return 0;
 }
