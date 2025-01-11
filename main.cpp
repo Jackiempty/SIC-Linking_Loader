@@ -28,6 +28,8 @@ int main(int argc, char* argv[]) {
   LLR Llr;
   PROGS = Llr.loadOBJ(input);
   mem = Llr.Loader(PROGS);
+  // Llr.DisplayTable();
   Llr.mem_Display();
+  Llr.dump(output);
   return 0;
 }
