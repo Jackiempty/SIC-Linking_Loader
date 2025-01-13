@@ -33,7 +33,7 @@ class LLR {
   bool findLabel(const string symbol, int& address);
   uint8_t get_mem(uint32_t address);
   void mem_Display();
-  void dump(string file_name);
+  void dump(string output, string report);
 
  private:
   unordered_map<string, int> table;

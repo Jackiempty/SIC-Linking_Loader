@@ -7,7 +7,7 @@ static inline string int_to_hex(int i, int space) {
   return stream.str().substr(stream.str().length() - space);
 }
 
-LLR::LLR() {}
+LLR::LLR() { table = {}; }
 
 vector<vector<OBJLINE>> LLR::loadOBJ(vector<string> file) {
   vector<vector<OBJLINE>> PROGS;
@@ -50,7 +50,7 @@ void LLR::parseLine(string line, vector<OBJLINE>& prog) {
     objline.type = Modification;
     objline.address = stoi(line.substr(1, 6), 0, 16);
     objline.length = stoi(line.substr(7, 2), 0, 16);
-    objline.objcode = line.substr(9);
+    objline.objcode = line.length() > 9 ? line.substr(9) : "";
     objline.raw = line;
     prog.push_back(objline);
   } else if (line[0] == 'D') {
@@ -127,7 +127,7 @@ uint8_t* LLR::Loader(vector<vector<OBJLINE>> progs) {
           } else if (progs[i][j].length == 6) {
             sum = (mem[line_start] << 16) + (mem[line_start + 1] << 4) + mem[line_start + 2];
           }
-          string symbol = progs[i][j].raw.substr(10, 6);
+          string symbol = progs[i][j].raw.length() > 9 ? progs[i][j].raw.substr(10, 6) : main;
           symbol.erase(remove_if(symbol.begin(), symbol.end(), ::isspace), symbol.end());
           int shift = table[symbol];  // shift ok, sum ok
           // cout << setw(6) << progs[i][j].raw.substr(10, 6) << ": " << int_to_hex(sum, 6) << endl;
@@ -135,10 +135,12 @@ uint8_t* LLR::Loader(vector<vector<OBJLINE>> progs) {
             sum += shift;
           } else if (progs[i][j].raw.substr(9, 1) == "-") {
             sum -= shift;
+          } else {
+            sum += shift;
           }
           if (progs[i][j].length == 5) {
             int temp = (mem[line_start] & 0b11110000) << 16;
-            cout << int_to_hex(line_start, 6) << ", tmp: " << int_to_hex(temp, 6) << endl;
+            // cout << int_to_hex(line_start, 6) << ", tmp: " << int_to_hex(temp, 6) << endl;
             sum += temp;
             string sum_str = int_to_hex(sum, 6);
             for (int i = 0; i < 3; i++) {
@@ -146,13 +148,13 @@ uint8_t* LLR::Loader(vector<vector<OBJLINE>> progs) {
             }
           } else if (progs[i][j].length == 6) {
             string sum_str = int_to_hex(sum, 6);
-            cout << int_to_hex(line_start, 6) << ": " << sum_str << endl;
+            // cout << int_to_hex(line_start, 6) << ": " << sum_str << endl;
             for (int i = 0; i < 3; i++) {
               mem[line_start + i] = stoi(sum_str.substr(i * 2, 2), 0, 16);
             }
           }
         } break;
-        case(Define):
+        case (Define):
         case (Refer):
         case (End):
           break;
@@ -193,13 +195,19 @@ void LLR::mem_Display() {
   }
 }
 
-void LLR::dump(string file_name) {
-  string output = "./test/" + file_name;
+void LLR::dump(string output, string report) {
+  string _output = "./test/" + output;
+  string _report = "./test/" + report;
+  string rpt = "E24106220  Finished date: 2025/01/13\n";
   cout << output << endl;
-  ofstream imgf(output);
+  cout << "Program name: " << main << endl;
+  ofstream imgf(_output);
+  ofstream rptf(_report);
   string obj_line = "";
   string obj_line_tmp = "";
   int locctr;
+  rptf << rpt;
+  cout << rpt;
   imgf << "H" << main << int_to_hex(PROGADDR, 6) << int_to_hex(length, 6) << endl;
   for (int i = 0; i < length; i++) {
     obj_line_tmp = obj_line + int_to_hex(mem[PROGADDR + i], 2);
