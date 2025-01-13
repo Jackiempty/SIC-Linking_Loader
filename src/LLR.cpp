@@ -81,6 +81,7 @@ void LLR::parseLine(string line, vector<OBJLINE>& prog) {
 
 uint8_t* LLR::Loader(vector<vector<OBJLINE>> progs) {
   int start = PROGADDR;
+  int tmp_length;
   for (int i = 0; i < progs.size(); i++) {
     for (int j = 0; j < progs[i].size(); j++) {
       if (progs[i][j].type == Header) {
@@ -91,11 +92,18 @@ uint8_t* LLR::Loader(vector<vector<OBJLINE>> progs) {
         }
         symbol.erase(remove_if(symbol.begin(), symbol.end(), ::isspace), symbol.end());
         table[symbol] = start;
-        start += progs[i][j].length;
+        tmp_length = progs[i][j].length;
+        // start += progs[i][j].length;
         // cout << progs[i][j].raw << " : " << int_to_hex(progs[i][j].address, 6) << ", "
         //      << int_to_hex(table[progs[i][j].raw.substr(1, 6)], 6) << endl;
+      } else if (progs[i][j].type == Define) {
+        int line_start = start + progs[i][j].address;
+        string symbol = progs[i][j].raw.substr(0, 6);
+        symbol.erase(remove_if(symbol.begin(), symbol.end(), ::isspace), symbol.end());
+        table[symbol] = line_start;
       }
     }
+    start += tmp_length;
   }
   for (int i = 0; i < progs.size(); i++) {
     for (int j = 0; j < progs[i].size(); j++) {
@@ -111,41 +119,40 @@ uint8_t* LLR::Loader(vector<vector<OBJLINE>> progs) {
             line_start += 1;
           }
         } break;
-        case (Define): {
-          int line_start = start + progs[i][j].address;
-          table[progs[i][j].raw.substr(0, 6)] = line_start;
-        } break;
         case (Modification): {
           int line_start = start + progs[i][j].address;
           int sum;
           if (progs[i][j].length == 5) {
-            sum = (mem[line_start] & 0b00001111);
+            sum = ((mem[line_start] & 0b00001111) << 16) + (mem[line_start + 1] << 4) + mem[line_start + 2];
           } else if (progs[i][j].length == 6) {
-            sum = mem[line_start];
+            sum = (mem[line_start] << 16) + (mem[line_start + 1] << 4) + mem[line_start + 2];
           }
-          int shift = table[progs[i][j].raw.substr(10, 6)];
-          // cout << setw(6) << progs[i][j].raw.substr(10, 6) << ": " << int_to_hex(shift, 6) << endl;
+          string symbol = progs[i][j].raw.substr(10, 6);
+          symbol.erase(remove_if(symbol.begin(), symbol.end(), ::isspace), symbol.end());
+          int shift = table[symbol];  // shift ok, sum ok
+          // cout << setw(6) << progs[i][j].raw.substr(10, 6) << ": " << int_to_hex(sum, 6) << endl;
           if (progs[i][j].raw.substr(9, 1) == "+") {
             sum += shift;
           } else if (progs[i][j].raw.substr(9, 1) == "-") {
             sum -= shift;
           }
           if (progs[i][j].length == 5) {
-            int temp = (mem[line_start] & 0b11110000);
+            int temp = (mem[line_start] & 0b11110000) << 16;
+            cout << int_to_hex(line_start, 6) << ", tmp: " << int_to_hex(temp, 6) << endl;
             sum += temp;
             string sum_str = int_to_hex(sum, 6);
-            // cout << int_to_hex(line_start, 6) << ": " << sum_str << endl;
             for (int i = 0; i < 3; i++) {
-              mem[line_start + i] = stoi(sum_str.substr(i, 2), 0, 16);
+              mem[line_start + i] = stoi(sum_str.substr(i * 2, 2), 0, 16);
             }
           } else if (progs[i][j].length == 6) {
             string sum_str = int_to_hex(sum, 6);
-            // cout << int_to_hex(line_start, 6) << ": " << sum_str << endl;
+            cout << int_to_hex(line_start, 6) << ": " << sum_str << endl;
             for (int i = 0; i < 3; i++) {
-              mem[line_start + i] = stoi(sum_str.substr(i, 2), 0, 16);
+              mem[line_start + i] = stoi(sum_str.substr(i * 2, 2), 0, 16);
             }
           }
         } break;
+        case(Define):
         case (Refer):
         case (End):
           break;
@@ -162,7 +169,7 @@ void LLR::insert(const string symbol, int address) { table[symbol] = {address}; 
 void LLR::DisplayTable() {
   cout << "Symbol Table" << endl;
   for (const auto& entry : table) {
-    cout << "Name: " << entry.first << " , Address: " << int_to_hex(entry.second, 6) << endl;
+    cout << "Name: " << entry.first << ", Address: " << int_to_hex(entry.second, 6) << endl;
   }
 }
 
@@ -178,7 +185,7 @@ bool LLR::findLabel(const string symbol, int& address) {
 uint8_t LLR::get_mem(uint32_t address) { return mem[address]; }
 
 void LLR::mem_Display() {
-  for (int i = 0x1000; i < 0x2100; i++) {
+  for (int i = 0x1000; i < 0x10C0; i++) {
     if ((i - 0x1000) % 8 == 0) cout << int_to_hex(i, 6) << ": ";
     cout << int_to_hex(mem[i], 2);
     cout << " ";
